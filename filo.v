@@ -12,7 +12,7 @@ module filo (clk, data_in, reset, read_write, data_out, empty, full, last);
 	output reg empty, full;
 	
 	/* on clock click */
-	always @(data_in or reset)
+	always @(clk)
 	begin
 
 		if (reset == 1'b1)
@@ -67,10 +67,10 @@ module filo (clk, data_in, reset, read_write, data_out, empty, full, last);
 					if (this_last > 0) empty = 0;
 
 			end // if write mode
-			else if (read_write == 1'b1)// if read mode
+			else if (read_write == 1'b1) // if read mode
 			begin
 			
-					case(this_last) // find stack height and write input to the next stack reg
+					case(this_last) // find stack height and take it's data
 						16 : data_out = r16;
 						15 : data_out = r15;
 						14 : data_out = r14;
@@ -104,7 +104,7 @@ module filo (clk, data_in, reset, read_write, data_out, empty, full, last);
 					if (this_last < 1) empty = 1;
 					if (this_last < 16) full = 0;
 					
-			end
+			end // if read mode
 		end // if reset off
 	end // always clock
 	
@@ -114,8 +114,8 @@ module top();
 
 	/* reg for inputs and regs */
 	reg[31:0] data_in;
-	integer clk = 0;
-	reg reset = 1'b0;
+	reg clk;
+	reg reset;
 	reg read_write;
 
 	/* wire for output */
@@ -123,53 +123,53 @@ module top();
 	wire[5:0] last; // integer 0-16
 	wire empty, full;
 
-	filo myFilo(clock, data_in, reset, read_write, data_out, empty, full, last);
+	filo myFilo(clk, data_in, reset, read_write, data_out, empty, full, last);
 	
 	initial begin
 		$dumpfile("filo.vcd");
 		$dumpvars(0);
 
-		/* Initialize module - Reset */
-		reset = 1'b1;
-
-		#10
-		reset = 1'b0;
+		clk = 1'b0; // initialize clock
 		
 		#10
+		reset = 1'b1; // initialize module
+
+		#10
+		reset = 1'b0; // turn off reset
 		read_write = 1'b0; // set module to push mode
 
-		repeat(17)
+		repeat(10)
 		begin
-			#10
-				data_in = $time;
-				
-			#100
-				/* print results */
-				$write("Time: ", $time, "\n"); 
-				$write("Data_in: \t%d \n", data_in);
-				$write("Data_out:\t%d \tEmpty: %d Full: %d Last: %d \n", data_out, empty, full, last);
-				$write("\n");
+			data_in = $time;
+			
+			#10 
+			/* print results */
+			$write("Time: ", $time, "\n"); 
+			$write("Data_in: \t%d \n", data_in);
+			$write("Data_out:\t%d \tEmpty: %d Full: %d Last: %d \n", data_out, empty, full, last);
+			$write("\n");
 		end
-
-		$write("\n\n*** popping *** \n\n");
 
 		/* Empty stack - Pop*/
-		#10
+		$write("\n\n*** popping *** \n\n");
 		read_write = 1'b1; // set module to pop mode
 		
-		repeat(17)
+		repeat(10)
 		begin
-			data_in = data_in + 1; // random input to instead of clock
-			#100
-				
-				/* print results */
-				$write("Time: ", $time, "\n"); 
-				$write("Data_out:\t%d \tEmpty: %d Full: %d Last: %d \n", data_out, empty, full, last);
-				$write("\n");
+			#10
+			/* print results */
+			$write("Time: ", $time, "\n"); 
+			$write("Data_out:\t%d \tEmpty: %d Full: %d Last: %d \n", data_out, empty, full, last);
+			$write("\n");
 		end
 
-		/* Finish top */
-		#10 $finish;
+		$finish;
 		
 	end // initial begin
+
+	/* clock tick-tack pseudo-generator */
+	always begin 
+		#10 clk = ~clk;
+	end
+
 endmodule // top
